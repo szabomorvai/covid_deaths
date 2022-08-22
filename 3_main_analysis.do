@@ -69,14 +69,15 @@ keep country country iso_code fw_end interview_share minta*
 export excel using "$results\table_a2.xls", firstrow(variables) replace
 
 ********************
-***Table A 3 - Descriptive statistics
+***Table A 3 - Descriptive statistics - ÚJRA hogy benne legyen a vaccination rate
 ********************
 use "$github\database.dta", clear
 cap erase descriptives.doc
 do "$do\3b_controls.do"
+do "$do\4_labels.do"
 
 *main variables
-local list1 lndeaths total_deaths_per_million lncases lnfatality_rate p_scores_all_ages lnexcess_deaths mean_positive_rate STconfidence_pca 
+local list1 lndeaths total_deaths_per_million lncases lnfatality_rate p_scores_all_ages lnexcess_deaths mean_positive_rate vaccination_rate STconfidence_pca
 
 local list2 STconfidence_in_press STconfidence_in_police ///
 STconfidence_in_parliament STconfidence_in_government  ///
@@ -85,7 +86,7 @@ STconfidence_in_parties STconfidence_in_justice
 local list3 breast prison_rate policy* yearsofedu  ///
  max_closing mean_closing sd_closing
 
-asdoc sum `list1' `list2' ${control7} `list3' stringency mean_stringency mean_implement imp_cat mean_contact cont_cat confidence_missing Alndeath1-Alndeath5 mean_implement ln_test nocorruption_score_2019, label save(${results}\descriptives.doc) replace 
+asdoc sum `list1' `list2' ${control7} `list3' stringency mean_stringency mean_implement imp_cat mean_contact cont_cat confidence_missing Alndeath1-Alndeath5 mean_implement ln_test nocorruption_score_2019 voterturnout, label save(${results}\descriptives.doc) replace 
 
 asdoc corr STconfidence_pca STconfidence_in_press STconfidence_in_police STconfidence_in_parliament STconfidence_in_government STconfidence_in_parties STconfidence_in_justice, label save(${results}\correlation.doc) replace
 

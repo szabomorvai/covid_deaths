@@ -1,10 +1,12 @@
-* Confidence in public institutions is critical in containing the COVID-19 pandemic
-* Anna Adamecz-Völgyi and Ágnes Szabó-Morvai
-* 2021.05.25.
+cap log close
+log using "$logs\1_database_parts.smcl", replace
 
-*main database downloaded from here: https://github.com/owid/covid-19-data/tree/master/public/data
-*excess deaths 
-import delimited "$data\excess_mortality\excess_mortality.csv" , clear
+* Confidence in public institutions is critical in containing the COVID-19 pandemic
+* Anna Adamecz-Völgyi, Ágnes Szabó-Morvai
+* Last updated on 18 July 2022 
+
+*Data on excess mortality in 2020
+import delimited "$newdata\excess_mortality\excess_mortality.csv" , clear
 order location date time_unit
 sort location date
 rename location country
@@ -20,7 +22,7 @@ gen year=substr(date,1,4)
 tab year
 gen month=substr(date,6,2)
 tab month
-drop if year=="2021"
+keep if year=="2020"
 collapse p_scores_all_ages, by(country)
 save "$data\excess_deaths.dta", replace
 
@@ -44,7 +46,7 @@ keep dietaryrisksihme2019 obesityihme2019 lowphysicalactivityihme2019 smokingihm
 alcoholuseihme2019	 highbloodsugarihme2019	highcholesterolihme2019	highbloodpressureihme2019 impairedkidneyfunctionihme2019 airpollutiontotalihme2019	country
 save "$data\death_risk.dta", replace
 
-* days since first covid case 
+* days since first covid case until 21 March 2021
 import excel "$data\OWID\owid-covid-data.xlsx", sheet("Sheet1") firstrow clear
 rename date strdate
 keep if total_deaths>=1 & total_deaths!=.
@@ -127,6 +129,7 @@ use "$data\mobility.dta", clear
 rename country_region country
 do "$do\1b_replace.do"
 save "$data\mobility.dta", replace 
+
 
 * Health expenditure
 import delimited "$source\Health expenditure per capita - World Bank WDI (2018)\Health expenditure per capita - World Bank WDI (2018).csv", clear
@@ -226,26 +229,60 @@ import excel "$covid\FH_democracy_data.xlsx", sheet("Munka1") firstrow clear
 do "$do\1b_replace.do"
 save "$data\FH_democracy.dta", replace 
 
-*ALternative observation periods
-use "$data\OWID\owid-covid-data.dta", clear
+*ALternative observation periods until 31 March 2021
+import excel "$data\OWID\owid-covid-data.xlsx",  firstrow clear
+
 sort iso_code date
 rename location country
-*dropping continents
-drop if continent==""
-drop if total_deaths_per_million==.
+sort country date
+keep country total_deaths_per_million date
+
+
+merge m:1 country using "$data\75_countries.dta"
+sort _merge country
+keep if _merge==3
+drop _merge
+
 keep country total_deaths_per_million date
 gen Alndeath=ln(total_deaths_per_million)
-keep if date=="2021-03-21" | date=="2021-02-21" | date=="2021-01-21" | date=="2020-12-21" | date=="2020-11-21" | date=="2020-10-21" | date=="2020-06-01"
+sort country date
+
+keep if date=="2021-03-21" | date=="2021-02-21" | date=="2021-01-21" | date=="2020-12-21" | date=="2020-11-21" | date=="2020-10-21" 
+
 sort country date
 by country: gen sor=_n
 keep  Alndeath country sor
 reshape wide Alndeath, i(country) j(sor)
-rename Alndeath1 Alndeath_1june2020
-forval i=2/7 {
-local j=`i'-1
-rename Alndeath`i' Alndeath`j'
-}
+save "$data\alt_observation_periods_1.dta", replace 
+
+*ALternative observation periods between 21 Apr 2021 and 21 Dec 2021
+import delimited "$newdata\owid-covid-data.csv", clear 
+
+sort iso_code date
+rename location country
+merge m:1 country using "$data\75_countries.dta"
+sort _merge country
+keep if _merge==3
+drop _merge
+
+keep country total_deaths_per_million date
+gen Alndeath=ln(total_deaths_per_million)
+
+sort country date
+*by country date: replace Alndeath=Alndeath[_n-1] if Alndeath==.
+
+keep if date=="2021-12-21" | date=="2021-11-21" | date=="2021-10-21" | ///
+date=="2021-09-21" | date=="2021-08-21" | date=="2021-07-21" | date=="2021-06-21" | date=="2021-05-21" | date=="2021-04-21" 
+
+sort country date
+by country: gen sor=_n
+replace sor=sor+6
+keep  Alndeath country sor
+reshape wide Alndeath, i(country) j(sor)
+merge 1:1 country using "$data\alt_observation_periods_1.dta"
+drop _merge
 save "$data\alt_observation_periods.dta", replace 
+
 
 ********************Corruption*********************
 *https://www.transparency.org/en/cpi/2020/index/nzl
@@ -388,3 +425,58 @@ save "$data\closure.dta", replace
 use "$covid\ourworldindata data\Falk et al economic preferences\country.dta" , clear
 do "$do\1b_replace.do"
 save "$data\falk_et_al.dta", replace
+
+***Voter turnout***
+*data source: https://www.idea.int/data-tools/world-view/40
+import excel "$covid\voter_turnout.xls", sheet("Worksheet") firstrow clear
+keep if Electiontype=="Parliamentary"
+rename Country country
+do "$do\1b_replace.do"
+merge m:1 country using "$covid\ourworldindata data\75_countries.dta"
+sort _merge country
+keep if _merge==3
+drop if Year>=2020
+drop if VoterTurnout==""
+gsort +country -Year
+duplicates drop country, force
+gen voterturnout=substr(VoterTurnout,1,5)
+order VoterTurnout voterturnout
+destring voterturnout, replace
+keep country voterturnout
+save "$data\voterturnout.dta", replace
+
+***Vaccinations****
+import delimited "$newdata\vaccinations\vaccinations.csv", clear
+order location date 
+sort location date
+rename location country
+merge m:1 country using "$data\75_countries.dta"
+sort _merge country
+keep if _merge==3
+drop _merge
+
+rename people_fully_vaccinated_per_hund vaccination_rate
+
+order country date vaccination_rate
+sort country date
+
+local list vaccination_rate
+foreach item in `list' {
+by country: replace `item'=`item'[_n-1] if `item'==.
+}
+
+sum vaccination_rate if date=="2022-01-01"
+edit if vaccination_rate==. & date=="2022-01-01"
+edit if country=="Ethiopia"
+
+sort country date
+local list vaccination_rate
+sum vaccination_rate if country=="Ethiopia" & date=="2022-03-06"
+replace vaccination_rate=r(mean) if country=="Ethiopia" & date=="2022-01-01"
+
+keep if date=="2022-01-01"
+keep country vaccination_rate
+sum vaccination_rate
+save "$data\vaccination.dta", replace
+
+cap log close

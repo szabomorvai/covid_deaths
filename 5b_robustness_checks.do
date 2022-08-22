@@ -3,7 +3,6 @@
 * 2021.05.25.
 
 
-
 ***********************************
 **********Table B 2: FIML**********
 ***********************************
@@ -13,18 +12,22 @@ global outcome lndeaths
 rename STconfidence_pca stconfidence_pca
 global var stconfidence_pca 
 global table table_b2
+
+*Outreg2 fails when producing medical-style output tables after sem - log file is produced
+cap log close
+log using "${results}\medical\\${table}", replace
 sem ( $outcome <- $var $control1 ) ,  vce(robust) method(mlmv) difficult allmissing 
 *Economics-style output table
 outreg2 using "${results}\economics\\${table}.doc" , replace ctitle(Model 1) dec(3) label word keep($var ${control1})
-*Medical-style output table 
-outreg2 using "${results}\medical\\${table}.doc" , replace ctitle(Model 1) dec(3) label stat(coef ci pval)  bracket(ci) paren(pval) noaster word keep($var ${control1}) nonotes addnote("Robust p-values in parentheses, 95% confidence intervals in brackets.")
+sleep 1000
 forval i=2/7 {
 sem ( $outcome <- $var  ${control`i'} ) , vce(robust) method(mlmv) difficult allmissing 
 *Economics-style output table
 outreg2 using "${results}\economics\\${table}.doc" , append ctitle(Model `i') dec(3) label word keep($var ${control`i'})
-*Medical-style output table 
-outreg2 using "${results}\medical\\${table}.doc" , append ctitle(Model `i') dec(3) label stat(coef ci pval)  bracket(ci) paren(pval) noaster word keep($var ${control`i'}) nonotes addnote("Robust p-values in parentheses, 95% confidence intervals in brackets.")
+sleep 1000
 }
+cap log close
+
 *Second item on Figure 2 (Model 7 in Table B 2)
 sem ( $outcome <- $var  ${control7} ) , vce(robust) method(mlmv) difficult allmissing 
 mat A2=(e(N),_b[stconfidence_pca],_se[stconfidence_pca])
@@ -41,7 +44,7 @@ save "$results\figure_2_A2.dta", replace
 ***********************************
 use "$github\database.dta", clear
 do "$do\3b_controls.do"
-local list lndeaths total_deaths_per_million lncases lnfatality_rate p_scores_all_ages lnexcess_deaths mean_positive_rate ln_test
+local list lndeaths total_deaths_per_million lncases lnfatality_rate p_scores_all_ages lnexcess_deaths mean_positive_rate ln_test 
 global table table_b3
 local i=1
 foreach item in `list' {
@@ -271,12 +274,13 @@ save "$results\figure_2_A5.dta", replace
 **********Table B 6: Further control variables
 ***********************************
 *Table B6
-
 use "$github\database.dta", clear
 do "$do\3b_controls.do"
 global outcome lndeaths 
 global var STconfidence_pca
 global table table_b6
+
+
 *controlling for corruption
 local i=1
 reg $outcome $var $control7  nocorruption_score_2019 ,  vce(robust) 
@@ -352,14 +356,66 @@ global title "Breast"
 do "$do\5d_outreg2.do"
 sleep 1000
 
+*próba: voter turnout
+local i=`i'+1
+reg $outcome $var $control7  voterturnout ,  vce(robust) 
+mat B`i'=(e(N),_b[${var}],_se[${var}])
+mat rownames  B`i'=voter
+global title "Voter"
+do "$do\5d_outreg2.do"
+sleep 1000
+
 *Sixth set of items on Figure 2 (Table B 6)
-mat A6=B1\B2\B3\B4\B5\B6\B7\B8
+mat A6=B1\B2\B3\B4\B5\B6\B7\B8\B9
 mat colnames A6=obs beta se
 clear
 svmat2 A6, names(col) rname(model)
 gen low=beta-1.96*se
 gen high=beta+1.96*se
 save "$results\figure_2_A6.dta", replace
+
+*************************************
+**********Table C1: Outcome, vaccination rate (OLS)
+*************************************
+use "$github\database.dta", clear
+do "$do\3b_controls.do"
+global outcome vaccination_rate
+global var STconfidence_pca 
+global table "table_c1"
+
+reg $outcome $var , vce(robust)
+*Economics-style output table
+*outreg2 using "${results}\economics\\${table}.doc" , replace ctitle(Model 1) dec(3) label word
+*Medical-style output table 
+outreg2 using "${results}\medical\\${table}.doc" , replace ctitle(Model 1) dec(3) label stat(coef ci pval)  bracket(ci) paren(pval) noaster word nonotes addnote("Robust p-values in parentheses, 95% confidence intervals in brackets.")
+
+gen minta1=e(sample)
+
+forval i=2/7 {
+reg $outcome $var ${control`i'}, vce(robust)
+gen minta`i'=e(sample)
+*outreg2 using "${results}\economics\\${table}.doc" , append ctitle("Model `i'") dec(3) label word
+outreg2 using "${results}\medical\\${table}.doc" , append ctitle("Model `i'") dec(3) label stat(coef ci pval) bracket(ci) paren(pval) word noaster nonotes addnote("Robust p-values in parentheses, 95% confidence intervals in brackets.")
+
+if `i'==7 {
+global table table_1
+outreg2 using "${results}\medical\\${table}.doc" , replace ctitle(Model 7) dec(3) label side stat(coef ci pval) bracket(ci) paren(pval) noaster word nonotes addnote("Robust p-values in parentheses, 95% confidence intervals in brackets.")
+}
+}
+
+
+*First item on Figure 2 (Model 7 in Table B1)
+reg $outcome $var ${control7}, vce(robust)
+mat A1=(e(N),_b[STconfidence_pca],_se[STconfidence_pca])
+mat rownames A1=Model_7_OLS
+mat colnames A1=obs beta se
+clear
+svmat2 A1, names(col) rname(model)
+
+gen low=beta-1.96*se
+gen high=beta+1.96*se
+
+save "$results\figure_2_A1.dta", replace
 
 ***********************************
 **********Table B 7: Alternative observation periods
@@ -621,11 +677,12 @@ lab def lsor ///
 25	"25. Controlling for the No. of tests" ///
 26	"26. Controlling for tightness" ///
 27	"27. Controlling for breast cancer survival" ///
-28	"28. Period until 21 Oct 2020" ///
-29	"29. Period until 21 Nov 2020" ///
-30	"30. Period until 21 Dec 2020" ///
-31	"31. Period until 21 Jan 2021" ///
-32	"32. Period until 21 Feb 2021"
+28 "28. Controlling for voter turnover" ///
+29	"29. Period until 21 Oct 2020" ///
+30	"30. Period until 21 Nov 2020" ///
+31	"31. Period until 21 Dec 2020" ///
+32	"32. Period until 21 Jan 2021" ///
+33	"33. Period until 21 Feb 2021"
 
 lab val sor lsor
 decode sor, gen(sor_str)
@@ -635,6 +692,6 @@ sencode sor_str, gen(sor2) label(sor_str) gsort(sor3)
 twoway (scatter beta sor , mlabel(obs) mlabsize(vsmall) mlabposition(1)) ////
 (rcap high low sor), xlabel(1(1)32, val angle(90) labsize(vsmall)) ///
 legend(label(1 "Estimated coefficients (sample size is above on the right)") label(2 "95% confidence intervals") col(1) size(small)) ///
-graphregion(color(white)) xtitle("") ytitle("Estimated coefficients", size(small)) yline(0) xline(2.5 5.5 11.5 27.5 , lcol(grey) lpattern(dash)) ///
-text(1.2 1.5 "Main", size(small)) text(1.2 4 "Out-" "comes", size(small)) text(1.2 8.5 "Confidence def.", size(small)) text(1.2 18 "Robustness checks", size(small)) text(1.2 30 "End of period", size(small))
+graphregion(color(white)) xtitle("") ytitle("Estimated coefficients", size(small)) yline(0) xline(2.5 5.5 11.5 28.5 , lcol(grey) lpattern(dash)) ///
+text(1.2 1.5 "Main", size(small)) text(1.2 4 "Out-" "comes", size(small)) text(1.2 8.5 "Confidence def.", size(small)) text(1.2 18 "Robustness checks", size(small)) text(1.2 31 "End of period", size(small))
 graph export "$results\figure_2.png", as(png) replace

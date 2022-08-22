@@ -9,6 +9,9 @@ lab var lnpop_den "Log population density"
 lab var total_deaths_per_million "Total deaths per million"
 lab var breast "Survival rate of breast cancer"
 lab var prison_rate "Prison population per 100,000"
+lab var vaccination_rate "Vaccination rate"
+lab var voterturnout "Voter turnout, most recent election"
+lab var mean_positive_rate "Mean positive rate"
 
 local list  police parliament government parties justice press
 foreach item in `list' {
@@ -36,19 +39,6 @@ lab var trust_pca "Trust in others"
 lab var ln_gdp "Log GDP per capita"
 lab var political_pca "Index of democracy and government effectiveness"
 lab var yearsofedu "Years of schooling"
-
-
-*alternative observation periods - days since the first death
-global n1 21/10/2020
-global n2 21/11/2020
-global n3 21/12/2020
-global n4 21/01/2021
-global n5 21/02/2021
-global n6 21/03/2021
-
-forval i=1/6 {
-lab var daysincovid`i' "No. of days since first death until ${n`i'}"
-}
 
 lab var ln_test "Log No. of tests per thousand people"
 lab var nocorruption_score_2019 "TI lack of corruption score"
@@ -78,7 +68,15 @@ lab var Alndeath3 "Log deaths by 2020-12-21"
 lab var Alndeath4 "Log deaths by 2021-01-21"
 lab var Alndeath5 "Log deaths by 2021-02-21"
 lab var Alndeath6 "Log deaths by 2021-03-21"
-lab var Alndeath_1june2020 "Log deaths by 2020-06-01"
+lab var Alndeath7 "Log deaths by 2020-04-21"
+lab var Alndeath8 "Log deaths by 2020-05-21"
+lab var Alndeath9 "Log deaths by 2020-06-21"
+lab var Alndeath10 "Log deaths by 2021-07-21"
+lab var Alndeath11 "Log deaths by 2021-08-21"
+lab var Alndeath12 "Log deaths by 2021-09-21"
+lab var Alndeath13 "Log deaths by 2021-10-21"
+lab var Alndeath14 "Log deaths by 2021-11-21"
+lab var Alndeath15 "Log deaths by 2021-12-21"
 
 lab var max_closing "Closing measures, max"
 lab var mean_closing "Closing measures, mean"

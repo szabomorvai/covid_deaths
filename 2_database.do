@@ -1,8 +1,17 @@
+cap log close
+log using "$logs\2_database.smcl", replace
+
 * Confidence in public institutions is critical in containing the COVID-19 pandemic
 * Anna Adamecz-Völgyi and Ágnes Szabó-Morvai
-* 2021.05.25.
+* Last updated on 18 July 2022 
 
-use "$data\OWID\owid-covid-data.dta", clear
+import excel "$data\OWID\owid-covid-data.xlsx",  firstrow clear
+save "$data\OWID\owid-covid-data.dta", replace
+rename location country
+merge m:1 country using "$data\75_countries.dta"
+sort _merge country
+keep if _merge==3
+
 sort iso_code date
 *dropping continents
 drop if continent==""
@@ -19,7 +28,6 @@ by iso_code: egen mean_positive_rate=mean(positive_rate )
 replace stringency_index=max_stringency
 drop max_stringency
 keep if date=="2021-03-21"
-rename location country
 keep iso_code country date total_cases_per_million total_deaths_per_million stringency_index mean_stringency total_tests_per_thousand mean_positive_rate population population_density aged_65_older gdp_per_capita hospital_beds_per_thousand life_expectancy 
 
 *excess deaths
@@ -152,6 +160,14 @@ drop _merge
 merge 1:1 country using  "$data\closure.dta"
 drop _merge
 
+*Voter turnout
+merge 1:1 country using  "$data\voterturnout.dta"
+drop _merge
+
+*Vaccination rate per hundred people (total population) on 1 Jan 2022
+merge 1:1 country using  "$data\vaccination.dta"
+drop _merge
+
 
 ******Variables********
 *1.	Measures of economic, social and political development
@@ -264,20 +280,6 @@ pca STG*
 predict political_pca
 sum political_pca
 
-*alternative observation periods - days since the first death
-global n1 21/10/2020
-global n2 21/11/2020
-global n3 21/12/2020
-global n4 21/01/2021
-global n5 21/02/2021
-global n6 21/03/2021
-
-forval i=1/6 {
-local day=(6-`i')*30
-di "Day= `day'"
-gen daysincovid`i'=daysincovid-`day'
-}
-
 gen ln_test=ln(total_tests_per_thousand)
 
 *island dummy
@@ -301,8 +303,7 @@ do "$do\4_labels.do"
 
 save "$github\database.dta", replace
 
-
-
+cap log close
 
 
 
